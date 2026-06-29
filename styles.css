@@ -147,7 +147,8 @@ h2 {
 }
 
 .today-pill,
-.coin-pill {
+.coin-pill,
+.account-chip {
   display: grid;
   place-items: center;
   width: 92px;
@@ -159,6 +160,15 @@ h2 {
   color: var(--green-dark);
 }
 
+.account-chip {
+  width: auto;
+  min-width: 124px;
+  padding: 0 14px;
+  border-color: rgba(75, 140, 255, 0.24);
+  background: #f3f7ff;
+  color: #2756bd;
+}
+
 .coin-pill {
   border-color: rgba(255, 188, 89, 0.44);
   background: #fff4cf;
@@ -166,14 +176,24 @@ h2 {
 }
 
 .today-pill span,
-.coin-pill span {
+.coin-pill span,
+.account-chip span {
   font-size: 1.85rem;
   font-weight: 900;
   line-height: 1;
 }
 
+.account-chip span {
+  max-width: 10ch;
+  overflow: hidden;
+  font-size: 1rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .today-pill small,
-.coin-pill small {
+.coin-pill small,
+.account-chip small {
   color: var(--muted);
   font-size: 0.72rem;
   font-weight: 800;
@@ -922,7 +942,8 @@ body.is-complete .progress-track span {
   background: linear-gradient(90deg, var(--yellow), var(--green), var(--blue));
 }
 
-.starter-modal {
+.starter-modal,
+.account-modal {
   position: fixed;
   inset: 0;
   z-index: 20;
@@ -933,11 +954,13 @@ body.is-complete .progress-track span {
   backdrop-filter: blur(12px);
 }
 
-.starter-modal.hidden {
+.starter-modal.hidden,
+.account-modal.hidden {
   display: none;
 }
 
-.starter-card {
+.starter-card,
+.account-card {
   width: min(940px, 100%);
   max-height: min(820px, 94vh);
   overflow: auto;
@@ -948,7 +971,12 @@ body.is-complete .progress-track span {
   box-shadow: 0 30px 90px rgba(0, 0, 0, 0.26);
 }
 
-.starter-card h2 {
+.account-card {
+  width: min(720px, 100%);
+}
+
+.starter-card h2,
+.account-card h2 {
   font-size: clamp(2rem, 6vw, 4.2rem);
   line-height: 0.95;
   max-width: 12ch;
@@ -1005,6 +1033,93 @@ body.is-complete .progress-track span {
   color: var(--muted);
   font-size: 0.82rem;
   font-weight: 760;
+}
+
+.account-form {
+  display: grid;
+  gap: 14px;
+  margin-top: 22px;
+}
+
+.account-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.create-account {
+  min-height: 42px;
+  padding: 0 14px;
+  background: rgba(75, 140, 255, 0.12);
+  color: #2756bd;
+}
+
+.account-message {
+  min-height: 22px;
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 760;
+}
+
+.account-message.error {
+  color: #a83c35;
+}
+
+.account-list-panel {
+  margin-top: 22px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.account-list-panel h3 {
+  margin: 0 0 10px;
+  font-size: 0.9rem;
+}
+
+.account-list {
+  display: grid;
+  gap: 8px;
+}
+
+.account-list-empty {
+  padding: 12px;
+  border: 1px dashed rgba(32, 49, 45, 0.2);
+  border-radius: 14px;
+  color: var(--muted);
+  font-weight: 760;
+}
+
+.account-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 58px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: white;
+  color: var(--ink);
+  text-align: left;
+}
+
+.account-list-item strong,
+.account-list-item span {
+  display: block;
+}
+
+.account-list-item span {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 760;
+}
+
+.account-list-item small {
+  color: var(--blue);
+  font-size: 0.72rem;
+  font-weight: 900;
 }
 
 @keyframes pixel-breathe {
@@ -1094,7 +1209,8 @@ body.is-complete .progress-track span {
   }
 
   .today-pill,
-  .coin-pill {
+  .coin-pill,
+  .account-chip {
     width: 76px;
     min-width: 76px;
     height: 76px;
@@ -1103,6 +1219,10 @@ body.is-complete .progress-track span {
   .today-pill span,
   .coin-pill span {
     font-size: 1.45rem;
+  }
+
+  .account-chip {
+    min-width: 112px;
   }
 
   .focus-stage {
@@ -1141,7 +1261,8 @@ body.is-complete .progress-track span {
     font-size: 1.35rem;
   }
 
-  .starter-card {
+  .starter-card,
+  .account-card {
     padding: 20px;
   }
 

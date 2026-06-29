@@ -29,6 +29,10 @@
             </div>
           </div>
           <div class="top-meters">
+            <button id="accountSwitchBtn" class="account-chip" type="button" title="Trocar conta">
+              <span id="accountName">Sem conta</span>
+              <small>conta</small>
+            </button>
             <div class="today-pill" aria-label="Minutos focados hoje">
               <span id="todayMinutes">0</span>
               <small>min hoje</small>
@@ -147,6 +151,43 @@
         </section>
       </aside>
     </main>
+
+    <section id="accountModal" class="account-modal" aria-labelledby="account-title" aria-modal="true" role="dialog">
+      <div class="account-card">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">contas locais</p>
+            <h2 id="account-title">Entrar no Focumon</h2>
+          </div>
+          <button id="closeAccountModalBtn" class="text-button" type="button">fechar</button>
+        </div>
+        <p class="starter-copy">Cada conta guarda moedas, capturas, evolucoes e historico separados neste navegador.</p>
+
+        <form id="accountForm" class="account-form">
+          <label class="input-field">
+            <span>Nome</span>
+            <input id="accountUsername" maxlength="24" placeholder="ex.: Yury" autocomplete="username" />
+          </label>
+          <label class="input-field">
+            <span>PIN</span>
+            <input id="accountPin" type="password" maxlength="12" placeholder="4 numeros ou mais" autocomplete="current-password" />
+          </label>
+          <div class="account-actions">
+            <button id="loginAccountBtn" class="main-action" type="submit">
+              <span class="icon play-icon" aria-hidden="true"></span>
+              <span>Entrar</span>
+            </button>
+            <button id="createAccountBtn" class="text-button create-account" type="button">criar conta</button>
+          </div>
+          <p id="accountMessage" class="account-message" aria-live="polite"></p>
+        </form>
+
+        <div class="account-list-panel">
+          <h3>Contas neste navegador</h3>
+          <div id="accountList" class="account-list"></div>
+        </div>
+      </div>
+    </section>
 
     <section id="starterModal" class="starter-modal" aria-labelledby="starter-title" aria-modal="true" role="dialog">
       <div class="starter-card">

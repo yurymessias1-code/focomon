@@ -1,4 +1,5 @@
-const STORAGE_KEY = "focumon-state-v1";
+const LEGACY_STORAGE_KEY = "focumon-state-v1";
+const ACCOUNTS_KEY = "focumon-accounts-v1";
 const CATALOG_TARGET = 160;
 
 const PALETTES = [
@@ -144,6 +145,8 @@ const elements = {
   sessionStatus: document.querySelector("#sessionStatus"),
   todayMinutes: document.querySelector("#todayMinutes"),
   coinCount: document.querySelector("#coinCount"),
+  accountSwitchBtn: document.querySelector("#accountSwitchBtn"),
+  accountName: document.querySelector("#accountName"),
   musicToggleBtn: document.querySelector("#musicToggleBtn"),
   totalSessions: document.querySelector("#totalSessions"),
   streakDays: document.querySelector("#streakDays"),
@@ -155,6 +158,14 @@ const elements = {
   catalogGrid: document.querySelector("#catalogGrid"),
   starterGrid: document.querySelector("#starterGrid"),
   starterModal: document.querySelector("#starterModal"),
+  accountModal: document.querySelector("#accountModal"),
+  accountForm: document.querySelector("#accountForm"),
+  accountUsername: document.querySelector("#accountUsername"),
+  accountPin: document.querySelector("#accountPin"),
+  createAccountBtn: document.querySelector("#createAccountBtn"),
+  closeAccountModalBtn: document.querySelector("#closeAccountModalBtn"),
+  accountMessage: document.querySelector("#accountMessage"),
+  accountList: document.querySelector("#accountList"),
   activeSprite: document.querySelector("#activeSprite"),
   taskInput: document.querySelector("#taskInput"),
   customMinutes: document.querySelector("#customMinutes"),
@@ -169,6 +180,9 @@ const elements = {
   catalogTemplate: document.querySelector("#catalogTemplate"),
 };
 
+let accountStore = loadAccounts();
+let activeAccount = getActiveAccount();
+let accountModalOpen = !activeAccount;
 let state = loadState();
 let timer = {
   duration: state.durationMinutes * 60,
@@ -220,13 +234,79 @@ function defaultState() {
   };
 }
 
-function loadState() {
+function loadAccounts() {
   try {
-    const stored = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    return normalizeState(stored);
+    const stored = JSON.parse(localStorage.getItem(ACCOUNTS_KEY));
+    return normalizeAccountStore(stored);
   } catch {
-    return defaultState();
+    return { activeAccountId: null, accounts: [] };
   }
+}
+
+function normalizeAccountStore(stored) {
+  if (!stored || typeof stored !== "object") {
+    return { activeAccountId: null, accounts: [] };
+  }
+
+  const accounts = Array.isArray(stored.accounts)
+    ? stored.accounts
+        .filter((account) => account && typeof account === "object")
+        .map((account) => ({
+          id: typeof account.id === "string" ? account.id : accountIdFor(account.name || ""),
+          name: cleanAccountName(account.name || account.id || "Treinador"),
+          pin: typeof account.pin === "string" ? account.pin : "",
+          createdAt: account.createdAt || new Date().toISOString(),
+          updatedAt: account.updatedAt || account.createdAt || new Date().toISOString(),
+          state: normalizeState(account.state),
+        }))
+    : [];
+
+  const activeAccountId = accounts.some((account) => account.id === stored.activeAccountId)
+    ? stored.activeAccountId
+    : accounts[0]?.id || null;
+
+  return { activeAccountId, accounts };
+}
+
+function persistAccounts() {
+  localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accountStore));
+}
+
+function getActiveAccount() {
+  return accountStore.accounts.find((account) => account.id === accountStore.activeAccountId) || null;
+}
+
+function cleanAccountName(value) {
+  return String(value || "").trim().replace(/\s+/g, " ").slice(0, 24);
+}
+
+function accountIdFor(value) {
+  const cleaned = cleanAccountName(value)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+
+  return cleaned || `treinador-${Date.now()}`;
+}
+
+function findAccountByName(value) {
+  const id = accountIdFor(value);
+  return accountStore.accounts.find((account) => account.id === id) || null;
+}
+
+function loadLegacyState() {
+  try {
+    const stored = JSON.parse(localStorage.getItem(LEGACY_STORAGE_KEY));
+    return stored ? normalizeState(stored) : null;
+  } catch {
+    return null;
+  }
+}
+
+function loadState() {
+  return activeAccount ? normalizeState(activeAccount.state) : defaultState();
 }
 
 function normalizeState(stored) {
@@ -271,13 +351,23 @@ function normalizeState(stored) {
 }
 
 function saveState() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  if (!activeAccount) return;
+  activeAccount.state = normalizeState(state);
+  activeAccount.updatedAt = new Date().toISOString();
+  persistAccounts();
 }
 
 function bindEvents() {
   elements.startPauseBtn.addEventListener("click", toggleTimer);
   elements.resetBtn.addEventListener("click", resetTimer);
   elements.musicToggleBtn.addEventListener("click", toggleMusicMute);
+  elements.accountSwitchBtn.addEventListener("click", () => openAccountModal());
+  elements.accountForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    loginAccount();
+  });
+  elements.createAccountBtn.addEventListener("click", createAccount);
+  elements.closeAccountModalBtn.addEventListener("click", closeAccountModal);
   elements.taskInput.addEventListener("input", () => {
     state.task = elements.taskInput.value;
     saveState();
@@ -307,13 +397,125 @@ function bindEvents() {
   });
 
   elements.clearDataBtn.addEventListener("click", () => {
-    const confirmed = window.confirm("Limpar progresso, capturas, moedas e historico?");
+    if (!activeAccount) {
+      openAccountModal("Entre em uma conta antes de limpar progresso.");
+      return;
+    }
+
+    const confirmed = window.confirm(`Limpar progresso, capturas, moedas e historico de ${activeAccount.name}?`);
     if (!confirmed) return;
-    localStorage.removeItem(STORAGE_KEY);
     state = defaultState();
+    saveState();
     resetTimer();
     render();
   });
+}
+
+function openAccountModal(message = "") {
+  if (timer.running) {
+    pauseTimer();
+  }
+
+  accountModalOpen = true;
+  renderAccountList();
+  setAccountMessage(message);
+  elements.accountModal.classList.remove("hidden");
+  elements.accountUsername.focus();
+}
+
+function closeAccountModal() {
+  if (!activeAccount) {
+    setAccountMessage("Crie ou entre em uma conta para continuar.", true);
+    return;
+  }
+
+  accountModalOpen = false;
+  setAccountMessage("");
+  elements.accountModal.classList.add("hidden");
+}
+
+function createAccount() {
+  const name = cleanAccountName(elements.accountUsername.value);
+  const pin = elements.accountPin.value.trim();
+
+  if (!name) {
+    setAccountMessage("Digite um nome para a conta.", true);
+    return;
+  }
+
+  if (pin.length < 4) {
+    setAccountMessage("Use um PIN com pelo menos 4 caracteres.", true);
+    return;
+  }
+
+  if (findAccountByName(name)) {
+    setAccountMessage("Essa conta ja existe. Digite o PIN e clique em Entrar.", true);
+    return;
+  }
+
+  const now = new Date().toISOString();
+  const importedState = accountStore.accounts.length === 0 ? loadLegacyState() : null;
+  const account = {
+    id: accountIdFor(name),
+    name,
+    pin,
+    createdAt: now,
+    updatedAt: now,
+    state: importedState || defaultState(),
+  };
+
+  accountStore.accounts.push(account);
+  accountStore.activeAccountId = account.id;
+  persistAccounts();
+  activateAccount(account, "Conta criada. Seu progresso agora fica separado aqui.");
+}
+
+function loginAccount() {
+  const name = cleanAccountName(elements.accountUsername.value);
+  const pin = elements.accountPin.value.trim();
+  const account = findAccountByName(name);
+
+  if (!account) {
+    setAccountMessage("Conta nao encontrada. Voce pode criar uma nova.", true);
+    return;
+  }
+
+  if (account.pin !== pin) {
+    setAccountMessage("PIN incorreto para essa conta.", true);
+    return;
+  }
+
+  accountStore.activeAccountId = account.id;
+  persistAccounts();
+  activateAccount(account, `Bem-vindo de volta, ${account.name}.`);
+}
+
+function activateAccount(account, message) {
+  stopLofi();
+  activeAccount = account;
+  state = normalizeState(account.state);
+  accountModalOpen = false;
+  elements.accountPin.value = "";
+  resetTimerForState();
+  saveState();
+  render();
+  setAccountMessage(message);
+}
+
+function resetTimerForState() {
+  timer.running = false;
+  window.clearInterval(timer.intervalId);
+  timer.intervalId = null;
+  timer.duration = state.durationMinutes * 60;
+  timer.remaining = timer.duration;
+  timer.targetTime = null;
+  document.body.classList.remove("is-running", "is-complete");
+  setStartButton("Iniciar", false);
+}
+
+function setAccountMessage(message, isError = false) {
+  elements.accountMessage.textContent = message;
+  elements.accountMessage.classList.toggle("error", Boolean(isError));
 }
 
 function toggleMusicMute() {
@@ -546,6 +748,11 @@ function unique(values) {
 }
 
 function toggleTimer() {
+  if (!activeAccount) {
+    openAccountModal("Entre em uma conta para salvar sua sessao.");
+    return;
+  }
+
   if (!state.partnerId) {
     elements.starterModal.classList.remove("hidden");
     return;
@@ -714,6 +921,8 @@ function captureCost(species) {
 }
 
 function render() {
+  renderAccountButton();
+  renderAccountList();
   elements.taskInput.value = state.task || "";
   elements.customMinutes.value = state.durationMinutes;
   renderStarterPicker();
@@ -727,7 +936,47 @@ function render() {
   renderCatalog();
   renderMusicButton();
   renderPartnerStatus();
-  elements.starterModal.classList.toggle("hidden", Boolean(state.partnerId));
+  elements.accountModal.classList.toggle("hidden", !accountModalOpen);
+  elements.starterModal.classList.toggle("hidden", !activeAccount || Boolean(state.partnerId));
+}
+
+function renderAccountButton() {
+  elements.accountName.textContent = activeAccount ? activeAccount.name : "Sem conta";
+}
+
+function renderAccountList() {
+  elements.accountList.innerHTML = "";
+
+  if (!accountStore.accounts.length) {
+    const empty = document.createElement("div");
+    empty.className = "account-list-empty";
+    empty.textContent = "Nenhuma conta criada ainda.";
+    elements.accountList.append(empty);
+    return;
+  }
+
+  accountStore.accounts.forEach((account) => {
+    const accountState = normalizeState(account.state);
+    const button = document.createElement("button");
+    const text = document.createElement("span");
+    const name = document.createElement("strong");
+    const meta = document.createElement("span");
+    const status = document.createElement("small");
+
+    button.className = "account-list-item";
+    button.type = "button";
+    name.textContent = account.name;
+    meta.textContent = `${accountState.coins} moedas - ${accountState.capturedIds.length} capturados`;
+    status.textContent = activeAccount?.id === account.id ? "ativa" : "usar";
+    text.append(name, meta);
+    button.append(text, status);
+    button.addEventListener("click", () => {
+      elements.accountUsername.value = account.name;
+      elements.accountPin.focus();
+      setAccountMessage("Digite o PIN e clique em Entrar.");
+    });
+    elements.accountList.append(button);
+  });
 }
 
 function renderStarterPicker() {
