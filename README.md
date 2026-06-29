@@ -16,6 +16,8 @@ No Focumon, cada periodo de foco concluido gera moedas, revela novas criaturas n
 - Area de capturados para escolher o parceiro ativo.
 - Historico e progresso salvos no navegador com localStorage.
 - Visual em pixel art original inspirado em RPGs portateis classicos.
+- Logo propria no cabecalho.
+- Musica lofi gerada no navegador com botao para silenciar.
 
 ## Como Usar
 
@@ -27,6 +29,7 @@ Para publicar no GitHub Pages, envie estes arquivos para um repositorio:
 - `styles.css`
 - `app.js`
 - `README.md`
+- `favicon.svg`
 
 Depois ative o GitHub Pages em:
 
@@ -37,4 +40,3 @@ Depois ative o GitHub Pages em:
 - HTML
 - CSS
 - JavaScript
-

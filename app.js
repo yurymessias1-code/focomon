@@ -144,6 +144,7 @@ const elements = {
   sessionStatus: document.querySelector("#sessionStatus"),
   todayMinutes: document.querySelector("#todayMinutes"),
   coinCount: document.querySelector("#coinCount"),
+  musicToggleBtn: document.querySelector("#musicToggleBtn"),
   totalSessions: document.querySelector("#totalSessions"),
   streakDays: document.querySelector("#streakDays"),
   totalHours: document.querySelector("#totalHours"),
@@ -177,6 +178,25 @@ let timer = {
   running: false,
 };
 
+const LOFI_BEAT = 60 / 78;
+const LOFI_CHORDS = [
+  [261.63, 329.63, 392],
+  [220, 277.18, 329.63],
+  [246.94, 311.13, 369.99],
+  [196, 246.94, 293.66],
+];
+const LOFI_BASS = [65.41, 65.41, 55, 55, 61.74, 61.74, 49, 49];
+
+let lofi = {
+  context: null,
+  master: null,
+  intervalId: null,
+  nextTime: 0,
+  step: 0,
+  playing: false,
+  noiseBuffer: null,
+};
+
 render();
 bindEvents();
 
@@ -191,6 +211,7 @@ function defaultState() {
     capturedIds: [],
     seenIds: [],
     coins: 0,
+    musicMuted: false,
     partnerPeriods: {},
     sessions: [],
     blocklist: ["redes sociais", "notificacoes"],
@@ -239,6 +260,7 @@ function normalizeState(stored) {
     capturedIds,
     seenIds: unique([...seenIds, ...capturedIds]),
     coins: clampNumber(stored.coins, 0, 999999, 0),
+    musicMuted: Boolean(stored.musicMuted),
     partnerId,
     partnerPeriods: stored.partnerPeriods && typeof stored.partnerPeriods === "object" ? stored.partnerPeriods : {},
     sessions: Array.isArray(stored.sessions) ? stored.sessions : [],
@@ -255,6 +277,7 @@ function saveState() {
 function bindEvents() {
   elements.startPauseBtn.addEventListener("click", toggleTimer);
   elements.resetBtn.addEventListener("click", resetTimer);
+  elements.musicToggleBtn.addEventListener("click", toggleMusicMute);
   elements.taskInput.addEventListener("input", () => {
     state.task = elements.taskInput.value;
     saveState();
@@ -291,6 +314,215 @@ function bindEvents() {
     resetTimer();
     render();
   });
+}
+
+function toggleMusicMute() {
+  state.musicMuted = !state.musicMuted;
+  saveState();
+
+  if (state.musicMuted) {
+    stopLofi();
+  } else if (timer.running) {
+    startLofi();
+  }
+
+  renderMusicButton();
+}
+
+function startLofi() {
+  if (state.musicMuted) {
+    renderMusicButton();
+    return;
+  }
+
+  const context = ensureLofiContext();
+  if (!context) return;
+
+  context.resume?.();
+  lofi.master.gain.cancelScheduledValues(context.currentTime);
+  lofi.master.gain.setTargetAtTime(0.16, context.currentTime, 0.12);
+
+  if (lofi.playing) return;
+
+  lofi.playing = true;
+  lofi.step = 0;
+  lofi.nextTime = context.currentTime + 0.04;
+  scheduleLofi();
+  lofi.intervalId = window.setInterval(scheduleLofi, 120);
+  renderMusicButton();
+}
+
+function stopLofi() {
+  if (lofi.intervalId) {
+    window.clearInterval(lofi.intervalId);
+    lofi.intervalId = null;
+  }
+
+  lofi.playing = false;
+
+  if (lofi.context && lofi.master) {
+    lofi.master.gain.cancelScheduledValues(lofi.context.currentTime);
+    lofi.master.gain.setTargetAtTime(0.0001, lofi.context.currentTime, 0.08);
+  }
+
+  renderMusicButton();
+}
+
+function ensureLofiContext() {
+  const AudioContextConstructor = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContextConstructor) {
+    elements.sessionStatus.textContent = "Este navegador nao conseguiu iniciar a musica lofi.";
+    return null;
+  }
+
+  if (lofi.context) return lofi.context;
+
+  const context = new AudioContextConstructor();
+  const master = context.createGain();
+  const compressor = context.createDynamicsCompressor();
+  master.gain.value = 0.0001;
+  compressor.threshold.value = -26;
+  compressor.knee.value = 24;
+  compressor.ratio.value = 3;
+  compressor.attack.value = 0.012;
+  compressor.release.value = 0.22;
+  master.connect(compressor);
+  compressor.connect(context.destination);
+
+  lofi.context = context;
+  lofi.master = master;
+  lofi.noiseBuffer = createNoiseBuffer(context);
+  return context;
+}
+
+function scheduleLofi() {
+  const context = lofi.context;
+  if (!context || !lofi.playing) return;
+
+  while (lofi.nextTime < context.currentTime + 0.7) {
+    scheduleLofiStep(lofi.step, lofi.nextTime);
+    lofi.step += 1;
+    lofi.nextTime += LOFI_BEAT;
+  }
+}
+
+function scheduleLofiStep(step, time) {
+  const chordIndex = Math.floor(step / 8) % LOFI_CHORDS.length;
+  const chord = LOFI_CHORDS[chordIndex];
+
+  if (step % 8 === 0) {
+    playChord(chord, time, LOFI_BEAT * 7.6);
+  }
+
+  if (step % 2 === 0) {
+    playKick(time);
+  }
+
+  if (step % 4 === 2) {
+    playSnare(time + LOFI_BEAT * 0.04);
+  }
+
+  playHat(time + LOFI_BEAT * 0.48);
+
+  const bassNote = LOFI_BASS[step % LOFI_BASS.length];
+  if ([0, 3, 4, 6].includes(step % 8)) {
+    playTone(bassNote, "sine", time, LOFI_BEAT * 0.9, 0.12, 420);
+  }
+}
+
+function playChord(notes, time, duration) {
+  notes.forEach((note, index) => {
+    playTone(note, "triangle", time + index * 0.018, duration, 0.036, 1250, index * 5 - 5);
+    playTone(note / 2, "sine", time + index * 0.018, duration, 0.018, 760, index * -3);
+  });
+}
+
+function playKick(time) {
+  const context = lofi.context;
+  const osc = context.createOscillator();
+  const gain = context.createGain();
+  osc.type = "sine";
+  osc.frequency.setValueAtTime(92, time);
+  osc.frequency.exponentialRampToValueAtTime(38, time + 0.18);
+  gain.gain.setValueAtTime(0.0001, time);
+  gain.gain.exponentialRampToValueAtTime(0.18, time + 0.012);
+  gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.28);
+  osc.connect(gain);
+  gain.connect(lofi.master);
+  osc.start(time);
+  osc.stop(time + 0.32);
+}
+
+function playSnare(time) {
+  playNoise(time, 0.15, 0.055, "bandpass", 1200);
+  playTone(188, "triangle", time, 0.11, 0.035, 900);
+}
+
+function playHat(time) {
+  playNoise(time, 0.045, 0.02, "highpass", 5200);
+}
+
+function playTone(frequency, type, time, duration, peakGain, filterFrequency, detune = 0) {
+  const context = lofi.context;
+  const osc = context.createOscillator();
+  const gain = context.createGain();
+  const filter = context.createBiquadFilter();
+
+  osc.type = type;
+  osc.frequency.setValueAtTime(frequency, time);
+  osc.detune.value = detune;
+  filter.type = "lowpass";
+  filter.frequency.value = filterFrequency;
+  filter.Q.value = 0.8;
+
+  gain.gain.setValueAtTime(0.0001, time);
+  gain.gain.exponentialRampToValueAtTime(peakGain, time + 0.035);
+  gain.gain.exponentialRampToValueAtTime(0.0001, time + duration);
+
+  osc.connect(filter);
+  filter.connect(gain);
+  gain.connect(lofi.master);
+  osc.start(time);
+  osc.stop(time + duration + 0.05);
+}
+
+function playNoise(time, duration, peakGain, filterType, filterFrequency) {
+  const context = lofi.context;
+  const source = context.createBufferSource();
+  const filter = context.createBiquadFilter();
+  const gain = context.createGain();
+
+  source.buffer = lofi.noiseBuffer;
+  filter.type = filterType;
+  filter.frequency.value = filterFrequency;
+  filter.Q.value = 0.9;
+  gain.gain.setValueAtTime(0.0001, time);
+  gain.gain.exponentialRampToValueAtTime(peakGain, time + 0.008);
+  gain.gain.exponentialRampToValueAtTime(0.0001, time + duration);
+
+  source.connect(filter);
+  filter.connect(gain);
+  gain.connect(lofi.master);
+  source.start(time);
+  source.stop(time + duration + 0.02);
+}
+
+function createNoiseBuffer(context) {
+  const buffer = context.createBuffer(1, context.sampleRate, context.sampleRate);
+  const data = buffer.getChannelData(0);
+
+  for (let index = 0; index < data.length; index += 1) {
+    data[index] = Math.random() * 2 - 1;
+  }
+
+  return buffer;
+}
+
+function renderMusicButton() {
+  elements.musicToggleBtn.classList.toggle("is-muted", state.musicMuted);
+  const label = state.musicMuted ? "Ativar musica" : "Silenciar musica";
+  elements.musicToggleBtn.setAttribute("aria-label", label);
+  elements.musicToggleBtn.title = label;
 }
 
 function setDuration(minutes) {
@@ -337,6 +569,7 @@ function startTimer() {
   document.body.classList.remove("is-complete");
   setStartButton("Pausar", true);
   elements.sessionStatus.textContent = runningStatus();
+  startLofi();
   timer.intervalId = window.setInterval(tick, 250);
   tick();
 }
@@ -347,6 +580,7 @@ function pauseTimer() {
   timer.intervalId = null;
   document.body.classList.remove("is-running");
   setStartButton("Continuar", false);
+  stopLofi();
   elements.sessionStatus.textContent = "Pausado. Seu Focumon esta guardando energia.";
 }
 
@@ -359,6 +593,7 @@ function resetTimer() {
   timer.targetTime = null;
   document.body.classList.remove("is-running", "is-complete");
   setStartButton("Iniciar", false);
+  stopLofi();
   renderTimer();
   renderPartnerStatus();
 }
@@ -383,6 +618,7 @@ function completeSession() {
   document.body.classList.remove("is-running");
   document.body.classList.add("is-complete");
   setStartButton("Nova sessao", false);
+  stopLofi();
 
   const partner = getPartner();
   const minutes = Math.round(timer.duration / 60);
@@ -489,6 +725,7 @@ function render() {
   renderBlocklist();
   renderCollection();
   renderCatalog();
+  renderMusicButton();
   renderPartnerStatus();
   elements.starterModal.classList.toggle("hidden", Boolean(state.partnerId));
 }

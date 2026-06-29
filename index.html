@@ -4,15 +4,29 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Focumon</title>
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
     <main class="app-shell">
       <section class="timer-panel" aria-labelledby="app-title">
         <header class="topbar">
-          <div>
-            <p class="eyebrow">temporizador de captura</p>
-            <h1 id="app-title">Focumon</h1>
+          <div class="brand-lockup">
+            <svg class="brand-logo" viewBox="0 0 64 64" role="img" aria-label="Logo Focumon">
+              <rect x="8" y="8" width="48" height="48" rx="10" fill="#20312d" />
+              <rect x="14" y="14" width="36" height="36" rx="6" fill="#fff8d9" />
+              <rect x="14" y="30" width="36" height="20" fill="#4b8cff" />
+              <rect x="20" y="20" width="8" height="8" fill="#ff7b6e" />
+              <rect x="36" y="20" width="8" height="8" fill="#ff7b6e" />
+              <rect x="26" y="36" width="12" height="8" fill="#20312d" />
+              <rect x="30" y="32" width="4" height="4" fill="#20312d" />
+              <rect x="18" y="48" width="10" height="6" fill="#20312d" />
+              <rect x="36" y="48" width="10" height="6" fill="#20312d" />
+            </svg>
+            <div>
+              <p class="eyebrow">temporizador de captura</p>
+              <h1 id="app-title">Focumon</h1>
+            </div>
           </div>
           <div class="top-meters">
             <div class="today-pill" aria-label="Minutos focados hoje">
@@ -23,6 +37,9 @@
               <span id="coinCount">0</span>
               <small>moedas</small>
             </div>
+            <button id="musicToggleBtn" class="icon-button music-toggle" type="button" aria-label="Silenciar musica" title="Silenciar musica">
+              <span class="icon music-icon" aria-hidden="true"></span>
+            </button>
           </div>
         </header>
 
