@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Focumon</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="timer-panel" aria-labelledby="app-title">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">temporizador de captura</p>
+            <h1 id="app-title">Focumon</h1>
+          </div>
+          <div class="top-meters">
+            <div class="today-pill" aria-label="Minutos focados hoje">
+              <span id="todayMinutes">0</span>
+              <small>min hoje</small>
+            </div>
+            <div class="coin-pill" aria-label="Moedas de foco">
+              <span id="coinCount">0</span>
+              <small>moedas</small>
+            </div>
+          </div>
+        </header>
+
+        <div class="focus-stage" aria-label="Criatura da sessao atual">
+          <div class="sky pixel-world">
+            <div class="sun" aria-hidden="true"></div>
+            <div class="pixel-cloud cloud-one" aria-hidden="true"></div>
+            <div class="pixel-cloud cloud-two" aria-hidden="true"></div>
+            <div class="pixel-ground" aria-hidden="true"></div>
+            <div class="creature-shadow" aria-hidden="true"></div>
+            <div id="activeSprite" class="active-creature" aria-label="Focumon parceiro"></div>
+            <div class="focus-orb" aria-hidden="true">
+              <span></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="timer-readout">
+          <output id="timeLeft" aria-live="polite">25:00</output>
+          <div class="progress-track" aria-hidden="true">
+            <span id="progressBar"></span>
+          </div>
+          <p id="sessionStatus">Escolha seu primeiro Focumon para comecar.</p>
+        </div>
+
+        <div class="control-grid">
+          <label class="input-field">
+            <span>Foco</span>
+            <input id="taskInput" maxlength="48" placeholder="ex.: estudar edital" autocomplete="off" />
+          </label>
+
+          <div class="duration-set" aria-label="Duracao da sessao">
+            <button class="duration-btn active" type="button" data-minutes="25">25</button>
+            <button class="duration-btn" type="button" data-minutes="45">45</button>
+            <button class="duration-btn" type="button" data-minutes="60">60</button>
+            <label class="custom-minutes">
+              <span>min</span>
+              <input id="customMinutes" type="number" min="5" max="180" step="5" value="25" />
+            </label>
+          </div>
+
+          <div class="primary-actions">
+            <button id="startPauseBtn" class="main-action" type="button">
+              <span class="icon play-icon" aria-hidden="true"></span>
+              <span>Iniciar</span>
+            </button>
+            <button id="resetBtn" class="icon-button" type="button" aria-label="Reiniciar sessao" title="Reiniciar sessao">
+              <span class="icon reset-icon" aria-hidden="true"></span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <aside class="side-panel" aria-label="Resumo do bosque">
+        <section class="stats-strip">
+          <article>
+            <strong id="totalSessions">0</strong>
+            <span>sessoes</span>
+          </article>
+          <article>
+            <strong id="streakDays">0</strong>
+            <span>dias</span>
+          </article>
+          <article>
+            <strong id="totalHours">0h</strong>
+            <span>total</span>
+          </article>
+        </section>
+
+        <section class="mini-week" aria-labelledby="week-title">
+          <div class="panel-heading">
+            <h2 id="week-title">Semana</h2>
+            <button id="clearDataBtn" class="text-button" type="button">limpar</button>
+          </div>
+          <div id="weekBars" class="week-bars"></div>
+        </section>
+
+        <section class="blocklist" aria-labelledby="block-title">
+          <div class="panel-heading">
+            <h2 id="block-title">Ficar longe</h2>
+          </div>
+          <form id="blockForm" class="add-row">
+            <input id="blockInput" maxlength="24" placeholder="site ou app" autocomplete="off" />
+            <button class="icon-button" type="submit" aria-label="Adicionar item" title="Adicionar item">
+              <span class="icon plus-icon" aria-hidden="true"></span>
+            </button>
+          </form>
+          <div id="blockTags" class="tag-list"></div>
+        </section>
+
+        <section class="forest-panel" aria-labelledby="forest-title">
+          <div class="panel-heading">
+            <h2 id="forest-title">Capturados</h2>
+            <span id="forestCount">0 capturados</span>
+          </div>
+          <div id="forestGrid" class="forest-grid" aria-live="polite"></div>
+        </section>
+
+        <section class="catalog-panel" aria-labelledby="catalog-title">
+          <div class="panel-heading">
+            <h2 id="catalog-title">Focudex</h2>
+            <span id="catalogCount">0/150</span>
+          </div>
+          <div id="catalogGrid" class="catalog-grid" aria-live="polite"></div>
+        </section>
+      </aside>
+    </main>
+
+    <section id="starterModal" class="starter-modal" aria-labelledby="starter-title" aria-modal="true" role="dialog">
+      <div class="starter-card">
+        <p class="eyebrow">primeiro parceiro</p>
+        <h2 id="starter-title">Escolha seu Focumon inicial</h2>
+        <p class="starter-copy">Ele vai acompanhar suas sessoes e evoluir conforme voce conclui periodos de foco.</p>
+        <div id="starterGrid" class="starter-grid"></div>
+      </div>
+    </section>
+
+    <template id="treeTemplate">
+      <article class="forest-tree">
+        <div class="sprite-slot"></div>
+        <div>
+          <strong></strong>
+          <span></span>
+        </div>
+      </article>
+    </template>
+
+    <template id="catalogTemplate">
+      <article class="catalog-item">
+        <span class="catalog-number"></span>
+        <div class="sprite-slot"></div>
+        <strong></strong>
+        <span class="catalog-meta"></span>
+        <button class="capture-btn" type="button"></button>
+      </article>
+    </template>
+
+    <script src="app.js"></script>
+  </body>
+</html>
